@@ -66,16 +66,23 @@
   .invest-hero-label { color:var(--blue); font-size:12px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
   .invest-hero-value { font-size:38px; font-weight:800; font-family:var(--mono); color:var(--blue); letter-spacing:-1px; }
   .invest-hero-hint { font-size:12px; color:var(--text-dim); margin-top:8px; }
-  .invest-items { display:flex; flex-direction:column; gap:8px; }
-  .invest-item { background:var(--surface); border-radius:14px; padding:14px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .invest-items { display:flex; flex-direction:column; gap:10px; }
+  .invest-item { background:var(--surface); border-radius:16px; padding:16px; }
+  .invest-item-top { display:flex; align-items:center; justify-content:space-between; }
   .invest-item-info { flex:1; }
-  .invest-item-name { font-size:14px; font-weight:600; color:var(--text); }
+  .invest-item-name { font-size:14px; font-weight:700; color:var(--text); }
   .invest-item-date { font-size:11px; color:var(--text-dim); margin-top:2px; }
-  .invest-item-value { font-size:16px; font-weight:800; font-family:var(--mono); color:var(--blue); }
-  .invest-item-actions { display:flex; gap:8px; margin-left:12px; }
+  .invest-item-value { font-size:18px; font-weight:800; font-family:var(--mono); color:var(--blue); }
+  .invest-item-actions { display:flex; gap:6px; margin-left:10px; }
   .invest-item-btn { width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; }
   .invest-item-btn.edit { background:rgba(96,165,250,0.15); color:var(--blue); }
   .invest-item-btn.del { background:rgba(239,68,68,0.1); color:var(--red); }
+  .invest-progress { margin-top:12px; }
+  .invest-progress-bar { height:8px; background:rgba(255,255,255,0.06); border-radius:4px; overflow:hidden; }
+  .invest-progress-fill { height:100%; border-radius:4px; transition:width 0.5s; }
+  .invest-progress-info { display:flex; justify-content:space-between; align-items:center; margin-top:6px; }
+  .invest-progress-pct { font-size:12px; font-weight:800; font-family:var(--mono); }
+  .invest-progress-meta { font-size:11px; color:var(--text-dim); }
 
   .mini-chart { display:flex; gap:6px; align-items:flex-end; margin-top:20px; }
   .mini-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
@@ -379,6 +386,8 @@
   body.hide-values .savings-target,
   body.hide-values .invest-hero-value,
   body.hide-values .invest-item-value,
+  body.hide-values .invest-progress-meta,
+  body.hide-values .invest-progress-pct,
   body.hide-values .overdue-alert-value,
   body.hide-values .budget-val,
   body.hide-values .budget-limit,
@@ -582,10 +591,11 @@
 
 <div id="modal-guardado" class="modal-overlay" onclick="if(event.target===this)closeGuardado()">
   <div class="modal-sheet">
-    <div class="modal-header"><div class="modal-title">💰 Adicionar Investimento</div><button class="modal-close" onclick="closeGuardado()">✕</button></div>
+    <div class="modal-header"><div class="modal-title">💰 Nova Caixinha</div><button class="modal-close" onclick="closeGuardado()">✕</button></div>
     <div class="form-group">
-      <input id="g-nome" class="form-input" type="text" placeholder="Nome (ex: Tesouro Direto, Poupança)">
-      <input id="g-valor" class="form-input" type="text" inputmode="decimal" placeholder="R$ 0,00" oninput="maskCurrency(this)">
+      <input id="g-nome" class="form-input" type="text" placeholder="Nome (ex: Reserva de Emergência)">
+      <input id="g-valor" class="form-input" type="text" inputmode="decimal" placeholder="Valor atual — R$ 0,00" oninput="maskCurrency(this)">
+      <input id="g-meta" class="form-input" type="text" inputmode="decimal" placeholder="Meta (opcional) — R$ 0,00" oninput="maskCurrency(this)">
       <button class="submit-btn blue" onclick="saveGuardado()">Salvar</button>
     </div>
   </div>
@@ -1923,14 +1933,16 @@ function openGuardado(editId){
   if(editId){
     const inv=investimentos.find(i=>i.id===editId);
     if(!inv)return;
-    titleEl.textContent='✎ Editar Investimento';
+    titleEl.textContent='✎ Editar Caixinha';
     document.getElementById('g-nome').value=inv.nome;
     document.getElementById('g-valor').value='R$ '+inv.valor.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+    document.getElementById('g-meta').value=inv.meta?'R$ '+inv.meta.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
     modal.dataset.editId=editId;
   } else {
-    titleEl.textContent='💰 Adicionar Investimento';
+    titleEl.textContent='💰 Nova Caixinha';
     document.getElementById('g-nome').value='';
     document.getElementById('g-valor').value='';
+    document.getElementById('g-meta').value='';
     modal.dataset.editId='';
   }
   modal.classList.add('open');
@@ -1938,14 +1950,15 @@ function openGuardado(editId){
 function closeGuardado(){document.getElementById('modal-guardado').classList.remove('open');}
 function saveGuardado(){
   const v=parseCurrency(document.getElementById('g-valor').value);
-  if(!v||v<=0)return;
-  const nome=document.getElementById('g-nome').value.trim()||'Investimento';
+  if(!v&&v!==0)return;
+  const nome=document.getElementById('g-nome').value.trim()||'Caixinha';
+  const meta=parseCurrency(document.getElementById('g-meta').value)||0;
   const editId=document.getElementById('modal-guardado').dataset.editId;
   if(editId){
     const inv=investimentos.find(i=>i.id===editId);
-    if(inv){inv.nome=nome;inv.valor=v;inv.atualizado=new Date().toISOString().slice(0,10);}
+    if(inv){inv.nome=nome;inv.valor=v;inv.meta=meta;inv.atualizado=new Date().toISOString().slice(0,10);}
   } else {
-    investimentos.push({id:Math.random().toString(36).slice(2,10),nome,valor:v,criado:new Date().toISOString().slice(0,10),atualizado:new Date().toISOString().slice(0,10)});
+    investimentos.push({id:Math.random().toString(36).slice(2,10),nome,valor:v,meta,criado:new Date().toISOString().slice(0,10),atualizado:new Date().toISOString().slice(0,10)});
   }
   save();closeGuardado();render();
 }
@@ -2515,21 +2528,40 @@ function render(){
 
   // Invest page
   const totalInvest=getTotalInvest();
-  const investItemsHTML=investimentos.length?investimentos.map(inv=>`<div class="invest-item"><div class="invest-item-info"><div class="invest-item-name">${inv.nome}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div><div class="invest-item-value">${fmt(inv.valor)}</div><div class="invest-item-actions"><button class="invest-item-btn edit" onclick="openGuardado('${inv.id}')">✎</button><button class="invest-item-btn del" onclick="deleteInvest('${inv.id}')">✕</button></div></div>`).join(''):'';
+  const investItemsHTML=investimentos.length?investimentos.map(inv=>{
+    const pct=inv.meta>0?Math.min((inv.valor/inv.meta)*100,100):0;
+    const pctColor=pct>=100?'var(--green)':pct>=50?'var(--blue)':pct>=25?'var(--yellow)':'var(--red)';
+    const remaining=inv.meta>0?Math.max(inv.meta-inv.valor,0):0;
+    const progressHTML=inv.meta>0?`<div class="invest-progress">
+      <div class="invest-progress-bar"><div class="invest-progress-fill" style="width:${pct}%;background:${pctColor}"></div></div>
+      <div class="invest-progress-info">
+        <div class="invest-progress-pct" style="color:${pctColor}">${pct>=100?'✓ Meta atingida!':pct.toFixed(0)+'%'}</div>
+        <div class="invest-progress-meta">${pct>=100?fmt(inv.meta):'Faltam '+fmt(remaining)+' de '+fmt(inv.meta)}</div>
+      </div>
+    </div>`:'';
+    return`<div class="invest-item">
+      <div class="invest-item-top">
+        <div class="invest-item-info"><div class="invest-item-name">${inv.nome}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
+        <div class="invest-item-value">${fmt(inv.valor)}</div>
+        <div class="invest-item-actions"><button class="invest-item-btn edit" onclick="openGuardado('${inv.id}')">✎</button><button class="invest-item-btn del" onclick="deleteInvest('${inv.id}')">✕</button></div>
+      </div>
+      ${progressHTML}
+    </div>`;
+  }).join(''):'';
 
   document.getElementById('page-invest').innerHTML=`
     <div class="invest-hero">
-      <div class="invest-hero-label">📈 Total Investido</div>
+      <div class="invest-hero-label">💰 Total nas Caixinhas</div>
       <div class="invest-hero-value">${fmt(totalInvest)}</div>
-      <div class="invest-hero-hint">${investimentos.length} investimento${investimentos.length!==1?'s':''}</div>
+      <div class="invest-hero-hint">${investimentos.length} caixinha${investimentos.length!==1?'s':''}</div>
     </div>
-    ${buildAportesSection()}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;margin-top:24px">
-      <div class="section-title" style="margin-bottom:0">Meus investimentos</div>
-      <button onclick="openGuardado()" style="padding:8px 16px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ Adicionar</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="section-title" style="margin-bottom:0">Minhas Caixinhas</div>
+      <button onclick="openGuardado()" style="padding:8px 16px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ Nova</button>
     </div>
     <div class="invest-items">${investItemsHTML}</div>
-    ${!investimentos.length?'<div class="empty"><div class="empty-icon">📈</div><div class="empty-text">Adicione seus investimentos</div></div>':''}`;
+    ${!investimentos.length?'<div class="empty"><div class="empty-icon">💰</div><div class="empty-text">Crie suas caixinhas para organizar seu dinheiro</div></div>':''}
+    ${buildAportesSection()}`;
 
   renderConfig();
   renderAnalise();
