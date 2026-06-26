@@ -224,6 +224,22 @@
   .proj-stat-val { font-size:16px; font-weight:800; font-family:var(--mono); margin-top:4px; }
   .proj-chart-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--text-muted); padding:0 4px; }
 
+  /* ===== Movimentações ===== */
+  .mov-list { margin-top:10px; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px; }
+  .mov-item { display:flex; align-items:center; gap:8px; padding:6px 0; }
+  .mov-icon { width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:800; flex-shrink:0; }
+  .mov-icon.entrada { background:rgba(45,212,191,0.15); color:var(--green); }
+  .mov-icon.saida { background:rgba(248,113,113,0.15); color:var(--red); }
+  .mov-info { flex:1; min-width:0; }
+  .mov-desc { font-size:12px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .mov-date { font-size:10px; color:var(--text-muted); }
+  .mov-val { font-size:12px; font-weight:700; font-family:var(--mono); }
+  .mov-toggle { font-size:11px; color:var(--blue); cursor:pointer; background:none; border:none; font-family:var(--font); font-weight:600; padding:4px 0; }
+  .invest-item-btns { display:flex; gap:6px; margin-top:10px; }
+  .invest-item-mov-btn { flex:1; padding:8px; border-radius:10px; border:none; font-size:12px; font-weight:700; font-family:var(--font); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .invest-item-mov-btn.add { background:rgba(45,212,191,0.1); color:var(--green); }
+  .invest-item-mov-btn.sub { background:rgba(248,113,113,0.08); color:var(--red); }
+
   /* ===== Caixinhas Summary ===== */
   .cx-summary { margin-top:20px; }
   .cx-summary-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
@@ -390,6 +406,7 @@
   body.hide-values .saldo-ind-val,
   body.hide-values .summary-box .value,
   body.hide-values .lh-value,
+  body.hide-values .mov-val,
   body.hide-values .cx-card-val,
   body.hide-values .cx-card-pct,
   body.hide-values .cx-card-remain,
@@ -629,6 +646,21 @@
       <input id="a-mes" class="form-input" type="month">
       <input id="a-desc" class="form-input" type="text" placeholder="Descrição (opcional)">
       <button class="submit-btn blue" onclick="saveAporte()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-movimentacao" class="modal-overlay" onclick="if(event.target===this)closeMovimentacao()">
+  <div class="modal-sheet">
+    <div class="modal-header"><div class="modal-title" id="mov-title">💰 Movimentação</div><button class="modal-close" onclick="closeMovimentacao()">✕</button></div>
+    <div class="form-group">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button id="mov-tipo-entrada" class="submit-btn blue" style="flex:1;opacity:0.5" onclick="setMovTipo('entrada')">+ Entrada</button>
+        <button id="mov-tipo-saida" class="submit-btn" style="flex:1;background:var(--red);opacity:0.5" onclick="setMovTipo('saida')">− Saída</button>
+      </div>
+      <input id="mov-valor" class="form-input" type="text" inputmode="decimal" placeholder="R$ 0,00" oninput="maskCurrency(this)">
+      <input id="mov-desc" class="form-input" type="text" placeholder="Motivo (ex: Manutenção do carro)">
+      <button class="submit-btn blue" onclick="saveMovimentacao()">Registrar</button>
     </div>
   </div>
 </div>
@@ -2036,6 +2068,51 @@ function saveAporte(){
 }
 function deleteAporte(id){if(!confirm('Apagar este aporte?'))return;aportes=aportes.filter(a=>a.id!==id);save();render();}
 
+// ===== Movimentações =====
+let movTipo='entrada';
+let movInvestId='';
+
+function openMovimentacao(investId,tipo){
+  movInvestId=investId;
+  const inv=investimentos.find(i=>i.id===investId);
+  if(!inv)return;
+  document.getElementById('mov-title').textContent='💰 '+inv.nome;
+  document.getElementById('mov-valor').value='';
+  document.getElementById('mov-desc').value='';
+  setMovTipo(tipo||'entrada');
+  document.getElementById('modal-movimentacao').classList.add('open');
+}
+function closeMovimentacao(){document.getElementById('modal-movimentacao').classList.remove('open');}
+function setMovTipo(tipo){
+  movTipo=tipo;
+  document.getElementById('mov-tipo-entrada').style.opacity=tipo==='entrada'?'1':'0.5';
+  document.getElementById('mov-tipo-saida').style.opacity=tipo==='saida'?'1':'0.5';
+}
+function saveMovimentacao(){
+  const v=parseCurrency(document.getElementById('mov-valor').value);
+  if(!v||v<=0){showToast('Informe o valor','warning');return;}
+  const desc=document.getElementById('mov-desc').value.trim();
+  if(!desc){showToast('Informe o motivo','warning');return;}
+  const inv=investimentos.find(i=>i.id===movInvestId);
+  if(!inv)return;
+  if(!inv.movimentacoes)inv.movimentacoes=[];
+  inv.movimentacoes.push({id:Math.random().toString(36).slice(2,10),tipo:movTipo,valor:v,descricao:desc,data:new Date().toISOString().slice(0,10)});
+  if(movTipo==='entrada'){inv.valor+=v;}
+  else{inv.valor=Math.max(0,inv.valor-v);}
+  inv.atualizado=new Date().toISOString().slice(0,10);
+  save();closeMovimentacao();render();
+  showToast(movTipo==='entrada'?'✅ Entrada registrada':'📤 Saída registrada','success');
+}
+function deleteMovimentacao(investId,movId){
+  if(!confirm('Apagar esta movimentação? O valor da caixinha NÃO será revertido.'))return;
+  const inv=investimentos.find(i=>i.id===investId);
+  if(!inv||!inv.movimentacoes)return;
+  inv.movimentacoes=inv.movimentacoes.filter(m=>m.id!==movId);
+  save();render();
+}
+let openMovHistorico={};
+function toggleMovHistorico(id){openMovHistorico[id]=!openMovHistorico[id];render();}
+
 function buildAportesSection(){
   const now=new Date();
   const currentYear=now.getFullYear();
@@ -2587,6 +2664,18 @@ function render(){
         <div class="invest-progress-meta">${pct>=100?fmt(inv.meta):'Faltam '+fmt(remaining)+' de '+fmt(inv.meta)}</div>
       </div>
     </div>`:'';
+    // Movimentações
+    const movs=inv.movimentacoes||[];
+    const showMov=openMovHistorico[inv.id];
+    const recentMovs=showMov?movs.slice().reverse():movs.slice().reverse().slice(0,3);
+    const movHTML=movs.length?`<div class="mov-list">
+      ${recentMovs.map(m=>`<div class="mov-item">
+        <div class="mov-icon ${m.tipo}"><span>${m.tipo==='entrada'?'+':'−'}</span></div>
+        <div class="mov-info"><div class="mov-desc">${m.descricao}</div><div class="mov-date">${fmtDate(m.data)}</div></div>
+        <div class="mov-val" style="color:${m.tipo==='entrada'?'var(--green)':'var(--red)'}">${m.tipo==='entrada'?'+':'−'}${fmt(m.valor)}</div>
+      </div>`).join('')}
+      ${movs.length>3?`<button class="mov-toggle" onclick="toggleMovHistorico('${inv.id}')">${showMov?'▲ Ver menos':'▼ Ver todas ('+movs.length+')'}</button>`:''}
+    </div>`:'';
     return`<div class="invest-item">
       <div class="invest-item-top">
         <div class="invest-item-info"><div class="invest-item-name">${inv.nome}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
@@ -2594,6 +2683,11 @@ function render(){
         <div class="invest-item-actions"><button class="invest-item-btn edit" onclick="openGuardado('${inv.id}')">✎</button><button class="invest-item-btn del" onclick="deleteInvest('${inv.id}')">✕</button></div>
       </div>
       ${progressHTML}
+      <div class="invest-item-btns">
+        <button class="invest-item-mov-btn add" onclick="openMovimentacao('${inv.id}','entrada')">+ Entrada</button>
+        <button class="invest-item-mov-btn sub" onclick="openMovimentacao('${inv.id}','saida')">− Saída</button>
+      </div>
+      ${movHTML}
     </div>`;
   }).join(''):'';
 
