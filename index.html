@@ -2649,8 +2649,8 @@ function render(){
     ${overdueAlertHTML}
     <div class="saldo-card"><div class="saldo-label">Saldo do mês</div><div class="saldo-value ${saldo>=0?'positive':'negative'}">${fmt(saldo)}</div>${chartHTML}</div>
     ${paidSummaryHTML}
-    ${buildHealthIndicator(allReceitas,allDespesas,saldo)}
     ${buildCaixinhasSummary()}
+    ${buildHealthIndicator(allReceitas,allDespesas,saldo)}
     ${savingsGoalHTML(saldo)}
     ${budgetHTML}
     ${recentHTML}${emptyHTML}`;
