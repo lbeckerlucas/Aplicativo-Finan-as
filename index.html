@@ -224,6 +224,21 @@
   .proj-stat-val { font-size:16px; font-weight:800; font-family:var(--mono); margin-top:4px; }
   .proj-chart-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--text-muted); padding:0 4px; }
 
+  /* ===== Rendimentos ===== */
+  .rend-card { background:linear-gradient(145deg,rgba(45,212,191,0.06),rgba(96,165,250,0.04)); border:1px solid rgba(45,212,191,0.1); border-radius:16px; padding:16px; margin-bottom:16px; }
+  .rend-selic { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .rend-selic-label { font-size:12px; color:var(--text-dim); font-weight:600; }
+  .rend-selic-input { width:80px; padding:6px 10px; border-radius:8px; border:1px solid rgba(45,212,191,0.2); background:rgba(0,0,0,0.3); color:var(--green); font-size:14px; font-weight:800; font-family:var(--mono); text-align:center; outline:none; }
+  .rend-selic-input:focus { border-color:var(--green); }
+  .rend-selic-suffix { font-size:12px; color:var(--text-dim); }
+  .rend-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .rend-box { background:rgba(0,0,0,0.2); border-radius:10px; padding:10px; text-align:center; }
+  .rend-box-label { font-size:9px; color:var(--text-dim); text-transform:uppercase; font-weight:700; letter-spacing:0.5px; }
+  .rend-box-val { font-size:15px; font-weight:800; font-family:var(--mono); color:var(--green); margin-top:4px; }
+  .rend-item { display:flex; justify-content:space-between; align-items:center; padding:4px 0; }
+  .rend-item-name { font-size:11px; color:var(--text-dim); }
+  .rend-item-val { font-size:11px; font-weight:700; font-family:var(--mono); color:var(--green); }
+
   /* ===== Movimentações ===== */
   .mov-list { margin-top:10px; border-top:1px solid rgba(255,255,255,0.04); padding-top:8px; }
   .mov-item { display:flex; align-items:center; gap:8px; padding:6px 0; }
@@ -406,6 +421,8 @@
   body.hide-values .saldo-ind-val,
   body.hide-values .summary-box .value,
   body.hide-values .lh-value,
+  body.hide-values .rend-box-val,
+  body.hide-values .rend-item-val,
   body.hide-values .mov-val,
   body.hide-values .cx-card-val,
   body.hide-values .cx-card-pct,
@@ -574,7 +591,6 @@
 <div id="page-despesas" class="page"></div>
 <div id="page-analise" class="page"></div>
 <div id="page-invest" class="page"></div>
-<div id="page-projetos" class="page"></div>
 <div id="page-config" class="page"></div>
 
 <button id="fab" class="fab" onclick="openForm()">+</button>
@@ -585,7 +601,6 @@
   <button class="tab-btn" data-tab="despesas" onclick="switchTab('despesas')"><span class="tab-icon">↓</span><span class="tab-label">Despesas</span></button>
   <button class="tab-btn" data-tab="analise" onclick="switchTab('analise')"><span class="tab-icon">📊</span><span class="tab-label">Análise</span></button>
   <button class="tab-btn" data-tab="invest" onclick="switchTab('invest')"><span class="tab-icon">📈</span><span class="tab-label">Investir</span></button>
-  <button class="tab-btn" data-tab="projetos" onclick="switchTab('projetos')"><span class="tab-icon">🎯</span><span class="tab-label">Projetos</span></button>
   <button class="tab-btn" data-tab="config" onclick="switchTab('config')"><span class="tab-icon">⚙</span><span class="tab-label">Config</span></button>
 </div>
 
@@ -633,6 +648,7 @@
       <input id="g-nome" class="form-input" type="text" placeholder="Nome (ex: Reserva de Emergência)">
       <input id="g-valor" class="form-input" type="text" inputmode="decimal" placeholder="Valor atual — R$ 0,00" oninput="maskCurrency(this)">
       <input id="g-meta" class="form-input" type="text" inputmode="decimal" placeholder="Meta (opcional) — R$ 0,00" oninput="maskCurrency(this)">
+      <input id="g-cdi" class="form-input" type="number" inputmode="decimal" placeholder="% do CDI (ex: 100)" step="0.1">
       <button class="submit-btn blue" onclick="saveGuardado()">Salvar</button>
     </div>
   </div>
@@ -720,7 +736,7 @@ const DEFAULT_COLORS={'Salário':'#2dd4bf','Freelance':'#a78bfa','Investimentos'
 const CAT_ICONS={'Salário':'💰','Freelance':'💻','Investimentos':'📈','Vendas':'🛒','Outros':'📌','Moradia':'🏠','Alimentação':'🍕','Transporte':'🚗','Saúde':'💊','Lazer':'🎮','Educação':'📚','Compras':'🛍️','Contas':'📄'};
 const PALETTE=['#f87171','#fb923c','#fbbf24','#34d399','#2dd4bf','#60a5fa','#a78bfa','#f472b6','#e879f9','#38bdf8','#4ade80','#facc15'];
 
-let entries=[], customCats=[], investimentos=[], budgetGoals={}, savingsGoal=0, aportes=[], projetos=[];
+let entries=[], customCats=[], investimentos=[], budgetGoals={}, savingsGoal=0, aportes=[], projetos=[], taxaCDI=14.75;
 let currentTab='resumo', formType='receita', selectedCat='';
 let isRecurring=false, recurMonths=3, isParcela=false;
 let currentMonth={year:new Date().getFullYear(),month:new Date().getMonth()};
@@ -869,8 +885,8 @@ function sortBarHTML(){
   return`<div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch">${opts.map(o=>`<button style="padding:5px 10px;border-radius:8px;border:1px solid ${sortMode===o.v?'var(--blue)':'rgba(255,255,255,0.1)'};background:${sortMode===o.v?'rgba(96,165,250,0.15)':'transparent'};color:${sortMode===o.v?'var(--blue)':'var(--text-dim)'};font-size:10px;font-family:var(--font);font-weight:700;cursor:pointer;white-space:nowrap" onclick="setSort('${o.v}')">${o.l}</button>`).join('')}</div>`;
 }
 
-function load(){try{const d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(d){entries=d.entries||[];customCats=d.customCats||[];investimentos=d.investimentos||[];budgetGoals=d.budgetGoals||{};savingsGoal=d.savingsGoal||0;aportes=d.aportes||[];projetos=d.projetos||[];}}catch(e){}}
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({entries,customCats,investimentos,budgetGoals,savingsGoal,aportes,projetos}));}catch(e){} if(syncSettings.blobId&&syncSettings.apiKey&&syncSettings.autoSync){debouncedPush();}}
+function load(){try{const d=JSON.parse(localStorage.getItem(STORAGE_KEY));if(d){entries=d.entries||[];customCats=d.customCats||[];investimentos=d.investimentos||[];budgetGoals=d.budgetGoals||{};savingsGoal=d.savingsGoal||0;aportes=d.aportes||[];projetos=d.projetos||[];if(d.taxaCDI!==undefined)taxaCDI=d.taxaCDI;}}catch(e){}}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({entries,customCats,investimentos,budgetGoals,savingsGoal,aportes,projetos,taxaCDI}));}catch(e){} if(syncSettings.blobId&&syncSettings.apiKey&&syncSettings.autoSync){debouncedPush();}}
 
 // ===== Hide Values =====
 let valuesHidden=false;
@@ -1180,14 +1196,60 @@ async function exportPDF(){
   showToast('📄 PDF exportado!','success');
 }
 
+// ===== Rendimentos CDI =====
+function calcRendimentos(valor,pctCDI){
+  if(!valor||!pctCDI||!taxaCDI)return{diario:0,semanal:0,mensal:0};
+  const taxaDiaria=Math.pow(1+taxaCDI/100,1/252)-1;
+  const rendDiario=valor*taxaDiaria*(pctCDI/100);
+  return{diario:rendDiario,semanal:rendDiario*5,mensal:rendDiario*22};// dias úteis
+}
+
+function buildRendimentosCard(){
+  if(!investimentos.length)return'';
+  const totalInv=getTotalInvest();
+  let totalDia=0,totalSem=0,totalMes=0;
+  const items=investimentos.filter(i=>i.pctCDI>0).map(inv=>{
+    const r=calcRendimentos(inv.valor,inv.pctCDI);
+    totalDia+=r.diario;totalSem+=r.semanal;totalMes+=r.mensal;
+    return{nome:inv.nome,diario:r.diario,pctCDI:inv.pctCDI};
+  });
+  if(!items.length)return'';
+
+  return`<div class="rend-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-title" style="margin:0">📈 Rendimentos</div>
+      <div class="rend-selic">
+        <span class="rend-selic-label">CDI</span>
+        <input class="rend-selic-input" type="number" step="0.01" value="${taxaCDI}" onchange="taxaCDI=parseFloat(this.value)||0;save();render()">
+        <span class="rend-selic-suffix">% a.a.</span>
+      </div>
+    </div>
+    <div class="rend-grid">
+      <div class="rend-box"><div class="rend-box-label">Por dia</div><div class="rend-box-val">+${fmt(totalDia)}</div></div>
+      <div class="rend-box"><div class="rend-box-label">Por semana</div><div class="rend-box-val">+${fmt(totalSem)}</div></div>
+      <div class="rend-box"><div class="rend-box-label">Por mês</div><div class="rend-box-val">+${fmt(totalMes)}</div></div>
+    </div>
+    ${items.length>1?`<div style="margin-top:10px;border-top:1px solid rgba(255,255,255,0.04);padding-top:8px">
+      ${items.map(i=>`<div class="rend-item"><div class="rend-item-name">${i.nome} (${i.pctCDI}% CDI)</div><div class="rend-item-val">+${fmt(i.diario)}/dia</div></div>`).join('')}
+    </div>`:''}
+  </div>`;
+}
+
 // ===== Caixinhas Summary =====
 function buildCaixinhasSummary(){
   if(!investimentos.length)return'';
   const total=getTotalInvest();
+  let totalDia=0;
+  investimentos.filter(i=>i.pctCDI>0).forEach(inv=>{
+    const r=calcRendimentos(inv.valor,inv.pctCDI);
+    totalDia+=r.diario;
+  });
   const cards=investimentos.map(inv=>{
     const pct=inv.meta>0?Math.min((inv.valor/inv.meta)*100,100):0;
     const pctColor=inv.meta>0?(pct>=100?'var(--green)':pct>=50?'var(--blue)':pct>=25?'#fbbf24':'var(--red)'):'var(--blue)';
     const remaining=inv.meta>0?Math.max(inv.meta-inv.valor,0):0;
+    const rend=calcRendimentos(inv.valor,inv.pctCDI);
+    const rendInfo=inv.pctCDI>0?`<div style="font-size:10px;color:var(--green);margin-top:4px">+${fmt(rend.diario)}/dia • ${inv.pctCDI}% CDI</div>`:'';
     const barHTML=inv.meta>0?`<div class="cx-card-bar"><div class="cx-card-fill" style="width:${pct}%;background:${pctColor}"></div></div>
       <div class="cx-card-info">
         <div class="cx-card-pct" style="color:${pctColor}">${pct>=100?'✓ Completa':pct.toFixed(0)+'%'}</div>
@@ -1196,13 +1258,16 @@ function buildCaixinhasSummary(){
     return`<div class="cx-card" onclick="switchTab('invest')">
       <div class="cx-card-top"><div class="cx-card-name">${inv.nome}</div><div class="cx-card-val">${fmt(inv.valor)}</div></div>
       ${barHTML}
+      ${rendInfo}
     </div>`;
   }).join('');
+
+  const rendResumo=totalDia>0?` • <span style="color:var(--green)">+${fmt(totalDia)}/dia</span>`:'';
 
   return`<div class="cx-summary">
     <div class="cx-summary-header">
       <div class="section-title" style="margin:0">💰 Caixinhas</div>
-      <div class="cx-summary-total">Total: <strong>${fmt(total)}</strong></div>
+      <div class="cx-summary-total">Total: <strong>${fmt(total)}</strong>${rendResumo}</div>
     </div>
     ${cards}
   </div>`;
@@ -1373,7 +1438,7 @@ function saveSyncSettings(){try{localStorage.setItem(SYNC_KEY,JSON.stringify(syn
 
 function debouncedPush(){clearTimeout(pushTimer);pushTimer=setTimeout(()=>pushToCloud(),2000);}
 
-function buildSyncPayload(){return{entries,customCats,investimentos,budgetGoals,savingsGoal,aportes,projetos,lastModified:new Date().toISOString()};}
+function buildSyncPayload(){return{entries,customCats,investimentos,budgetGoals,savingsGoal,aportes,projetos,taxaCDI,lastModified:new Date().toISOString()};}
 
 function syncHeaders(extra){
   const h={'Content-Type':'application/json','X-Master-Key':syncSettings.apiKey};
@@ -1569,7 +1634,7 @@ function switchTab(tab){
   else if(tab==='despesas')fab.classList.add('visible','expense-fab');
   // Hide global month picker on tabs that have their own navigation
   const mp=document.querySelector('.month-picker');
-  mp.style.display=(tab==='analise'||tab==='invest'||tab==='config'||tab==='projetos')?'none':'flex';
+  mp.style.display=(tab==='analise'||tab==='invest'||tab==='config')?'none':'flex';
   render();
 }
 
@@ -2017,12 +2082,14 @@ function openGuardado(editId){
     document.getElementById('g-nome').value=inv.nome;
     document.getElementById('g-valor').value='R$ '+inv.valor.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');
     document.getElementById('g-meta').value=inv.meta?'R$ '+inv.meta.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.'):'';
+    document.getElementById('g-cdi').value=inv.pctCDI||'';
     modal.dataset.editId=editId;
   } else {
     titleEl.textContent='💰 Nova Caixinha';
     document.getElementById('g-nome').value='';
     document.getElementById('g-valor').value='';
     document.getElementById('g-meta').value='';
+    document.getElementById('g-cdi').value='100';
     modal.dataset.editId='';
   }
   modal.classList.add('open');
@@ -2033,12 +2100,13 @@ function saveGuardado(){
   if(!v&&v!==0)return;
   const nome=document.getElementById('g-nome').value.trim()||'Caixinha';
   const meta=parseCurrency(document.getElementById('g-meta').value)||0;
+  const pctCDI=parseFloat(document.getElementById('g-cdi').value)||0;
   const editId=document.getElementById('modal-guardado').dataset.editId;
   if(editId){
     const inv=investimentos.find(i=>i.id===editId);
-    if(inv){inv.nome=nome;inv.valor=v;inv.meta=meta;inv.atualizado=new Date().toISOString().slice(0,10);}
+    if(inv){inv.nome=nome;inv.valor=v;inv.meta=meta;inv.pctCDI=pctCDI;inv.atualizado=new Date().toISOString().slice(0,10);}
   } else {
-    investimentos.push({id:Math.random().toString(36).slice(2,10),nome,valor:v,meta,criado:new Date().toISOString().slice(0,10),atualizado:new Date().toISOString().slice(0,10)});
+    investimentos.push({id:Math.random().toString(36).slice(2,10),nome,valor:v,meta,pctCDI,criado:new Date().toISOString().slice(0,10),atualizado:new Date().toISOString().slice(0,10),movimentacoes:[]});
   }
   save();closeGuardado();render();
 }
@@ -2678,7 +2746,7 @@ function render(){
     </div>`:'';
     return`<div class="invest-item">
       <div class="invest-item-top">
-        <div class="invest-item-info"><div class="invest-item-name">${inv.nome}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
+        <div class="invest-item-info"><div class="invest-item-name">${inv.nome}${inv.pctCDI?' <span style="font-size:10px;color:var(--green);font-weight:600">${inv.pctCDI}% CDI</span>':''}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
         <div class="invest-item-value">${fmt(inv.valor)}</div>
         <div class="invest-item-actions"><button class="invest-item-btn edit" onclick="openGuardado('${inv.id}')">✎</button><button class="invest-item-btn del" onclick="deleteInvest('${inv.id}')">✕</button></div>
       </div>
@@ -2697,6 +2765,7 @@ function render(){
       <div class="invest-hero-value">${fmt(totalInvest)}</div>
       <div class="invest-hero-hint">${investimentos.length} caixinha${investimentos.length!==1?'s':''}</div>
     </div>
+    ${buildRendimentosCard()}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
       <div class="section-title" style="margin-bottom:0">Minhas Caixinhas</div>
       <button onclick="openGuardado()" style="padding:8px 16px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ Nova</button>
@@ -2707,7 +2776,6 @@ function render(){
 
   renderConfig();
   renderAnalise();
-  renderProjetos();
 
   // Restore search focus
   if(searchQuery){
