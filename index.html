@@ -696,25 +696,6 @@
 </div>
 
 <div id="modal-movimentacao" class="modal-overlay" onclick="if(event.target===this)closeMovimentacao()">
-
-<div id="modal-manutencao" class="modal-overlay" onclick="if(event.target===this)closeManutencao()">
-  <div class="modal-sheet">
-    <div class="modal-header"><div class="modal-title">🔧 Nova Manutenção</div><button class="modal-close" onclick="closeManutencao()">✕</button></div>
-    <div class="form-group">
-      <input id="man-data" class="form-input" type="date">
-      <input id="man-km" class="form-input" type="number" inputmode="numeric" placeholder="KM atual do veículo">
-      <input id="man-local" class="form-input" type="text" placeholder="Local / Oficina">
-      <div id="man-servicos"></div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
-        <input id="man-novo-servico" class="form-input" type="text" placeholder="Serviço realizado" style="flex:1;margin:0">
-        <input id="man-novo-valor" class="form-input" type="text" inputmode="decimal" placeholder="R$" oninput="maskCurrency(this)" style="width:90px;margin:0">
-        <button onclick="addServicoManut()" style="padding:8px 12px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:16px;font-weight:800;cursor:pointer">+</button>
-      </div>
-      <div id="man-lista-servicos"></div>
-      <button class="submit-btn blue" onclick="saveManutencao()">Salvar</button>
-    </div>
-  </div>
-</div>
   <div class="modal-sheet">
     <div class="modal-header"><div class="modal-title" id="mov-title">💰 Movimentação</div><button class="modal-close" onclick="closeMovimentacao()">✕</button></div>
     <div class="form-group">
@@ -725,6 +706,24 @@
       <input id="mov-valor" class="form-input" type="text" inputmode="decimal" placeholder="R$ 0,00" oninput="maskCurrency(this)">
       <input id="mov-desc" class="form-input" type="text" placeholder="Motivo (ex: Manutenção do carro)">
       <button class="submit-btn blue" onclick="saveMovimentacao()">Registrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal-manutencao" class="modal-overlay" onclick="if(event.target===this)closeManutencao()">
+  <div class="modal-sheet">
+    <div class="modal-header"><div class="modal-title">🔧 Nova Manutenção</div><button class="modal-close" onclick="closeManutencao()">✕</button></div>
+    <div class="form-group">
+      <input id="man-data" class="form-input" type="date">
+      <input id="man-km" class="form-input" type="number" inputmode="numeric" placeholder="KM atual do veículo">
+      <input id="man-local" class="form-input" type="text" placeholder="Local / Oficina">
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input id="man-novo-servico" class="form-input" type="text" placeholder="Serviço realizado" style="flex:1;margin:0">
+        <input id="man-novo-valor" class="form-input" type="text" inputmode="decimal" placeholder="R$" oninput="maskCurrency(this)" style="width:90px;margin:0">
+        <button onclick="addServicoManut()" style="padding:8px 12px;border-radius:10px;border:none;background:var(--blue);color:#fff;font-size:16px;font-weight:800;cursor:pointer">+</button>
+      </div>
+      <div id="man-lista-servicos"></div>
+      <button class="submit-btn blue" onclick="saveManutencao()">Salvar</button>
     </div>
   </div>
 </div>
@@ -1544,24 +1543,30 @@ function updateVeiculoKm(){
 function getProximasRevisoes(){
   const manuts=veiculo.manutencoes||[];
   const revisoes=[];
-  // Troca de óleo: a cada 5.000km ou 6 meses
-  const lastOleo=manuts.find(m=>m.servicos.some(s=>s.nome.toLowerCase().includes('oleo')||s.nome.toLowerCase().includes('óleo')));
-  const kmOleo=lastOleo?(lastOleo.km+5000):((veiculo.km||0)+5000);
-  const dataOleo=lastOleo?new Date(new Date(lastOleo.data).getTime()+180*86400000):new Date();
-  const kmFaltaOleo=kmOleo-(veiculo.km||0);
-  revisoes.push({nome:'Troca de Óleo',kmProx:kmOleo,dataProx:dataOleo,kmFalta:kmFaltaOleo,intervaloKm:5000});
+  const km=veiculo.km||0;
 
-  // Correia dentada: a cada 50.000km
-  const lastCorreia=manuts.find(m=>m.servicos.some(s=>s.nome.toLowerCase().includes('correia')));
-  const kmCorreia=lastCorreia?(lastCorreia.km+50000):((veiculo.km||0)+50000);
-  const kmFaltaCorreia=kmCorreia-(veiculo.km||0);
-  revisoes.push({nome:'Correia Dentada',kmProx:kmCorreia,dataProx:null,kmFalta:kmFaltaCorreia,intervaloKm:50000});
+  const items=[
+    {nome:'Troca de Óleo',busca:['oleo','óleo'],intervalo:5000},
+    {nome:'Filtro de Ar',busca:['filtro'],intervalo:10000},
+    {nome:'Correia Dentada',busca:['correia'],intervalo:50000},
+    {nome:'Bomba D\'água',busca:['bomba'],intervalo:50000},
+    {nome:'Arrefecimento',busca:['arrefecimento','arrefec'],intervalo:40000},
+    {nome:'Velas de Ignição',busca:['vela','ignição','ignicao'],intervalo:20000},
+    {nome:'Pastilhas de Freio',busca:['pastilha','freio'],intervalo:30000},
+    {nome:'Fluido de Freio',busca:['fluido'],intervalo:20000},
+  ];
 
-  // Filtro de ar: a cada 10.000km
-  const lastFiltro=manuts.find(m=>m.servicos.some(s=>s.nome.toLowerCase().includes('filtro')));
-  const kmFiltro=lastFiltro?(lastFiltro.km+10000):((veiculo.km||0)+10000);
-  revisoes.push({nome:'Filtro de Ar',kmProx:kmFiltro,dataProx:null,kmFalta:kmFiltro-(veiculo.km||0),intervaloKm:10000});
+  items.forEach(item=>{
+    const last=manuts.find(m=>m.servicos.some(s=>{
+      const lower=s.nome.toLowerCase();
+      return item.busca.some(b=>lower.includes(b));
+    }));
+    const kmProx=last?(last.km+item.intervalo):(km+item.intervalo);
+    const kmFalta=kmProx-km;
+    revisoes.push({nome:item.nome,kmProx,kmFalta,intervalo:item.intervalo});
+  });
 
+  revisoes.sort((a,b)=>a.kmFalta-b.kmFalta);
   return revisoes;
 }
 
