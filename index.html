@@ -784,7 +784,7 @@ const CAT_ICONS={'Salário':'💰','Freelance':'💻','Investimentos':'📈','Ve
 const PALETTE=['#f87171','#fb923c','#fbbf24','#34d399','#2dd4bf','#60a5fa','#a78bfa','#f472b6','#e879f9','#38bdf8','#4ade80','#facc15'];
 
 let entries=[], customCats=[], investimentos=[], budgetGoals={}, savingsGoal=0, aportes=[], projetos=[], taxaCDI=14.75;
-let veiculo={nome:'Fox 1.6',ano:2007,cor:'Prata',km:179568,manutencoes:[{id:'init01',data:'2026-06-27',km:179568,local:'',servicos:[{nome:'Kit Correia Dentada',valor:380},{nome:'Bomba D\'agua',valor:240},{nome:'Kit Arrefecimento',valor:140},{nome:'Kit Troca de Oleo',valor:280},{nome:'Anti-Chamas',valor:140},{nome:'Limpeza de Carter',valor:120},{nome:'Mão de Obra',valor:380}]}]};
+let veiculo={nome:'Fox 1.6',ano:2007,cor:'Prata',km:179568,manutencoes:[{id:'init01',data:'2026-06-27',km:179568,local:'',servicos:[{nome:'Kit Correia Dentada',valor:380},{nome:'Bomba D\'agua',valor:240},{nome:'Kit Arrefecimento',valor:140},{nome:'Kit Troca de Oleo',valor:280},{nome:'Anti-Chamas',valor:140},{nome:'Limpeza de Carter',valor:120},{nome:'Mão de Obra',valor:380}]},{id:'init02',data:'2026-02-09',km:177024,local:'Auto Mecânica Bohmann',servicos:[{nome:'4L Óleo Motor',valor:156},{nome:'Filtro Óleo',valor:23},{nome:'Tampa Óleo',valor:31},{nome:'Jogo Velas',valor:124.60},{nome:'Bateria Moura',valor:0},{nome:'Mão de Obra',valor:389.40}]}]};
 let currentTab='resumo', formType='receita', selectedCat='';
 let isRecurring=false, recurMonths=3, isParcela=false;
 let currentMonth={year:new Date().getFullYear(),month:new Date().getMonth()};
@@ -1544,6 +1544,7 @@ function getProximasRevisoes(){
   const manuts=veiculo.manutencoes||[];
   const revisoes=[];
   const km=veiculo.km||0;
+  const ocultas=veiculo.revisoesOcultas||[];
 
   const items=[
     {nome:'Troca de Óleo',busca:['oleo','óleo'],intervalo:5000},
@@ -1554,9 +1555,11 @@ function getProximasRevisoes(){
     {nome:'Velas de Ignição',busca:['vela','ignição','ignicao'],intervalo:20000},
     {nome:'Pastilhas de Freio',busca:['pastilha','freio'],intervalo:30000},
     {nome:'Fluido de Freio',busca:['fluido'],intervalo:20000},
+    {nome:'Bateria',busca:['bateria'],intervalo:50000},
   ];
 
   items.forEach(item=>{
+    if(ocultas.includes(item.nome))return;
     const last=manuts.find(m=>m.servicos.some(s=>{
       const lower=s.nome.toLowerCase();
       return item.busca.some(b=>lower.includes(b));
@@ -1568,6 +1571,22 @@ function getProximasRevisoes(){
 
   revisoes.sort((a,b)=>a.kmFalta-b.kmFalta);
   return revisoes;
+}
+
+function ocultarRevisao(nome){
+  if(!confirm('Ocultar "'+nome+'" das próximas revisões?'))return;
+  if(!veiculo.revisoesOcultas)veiculo.revisoesOcultas=[];
+  veiculo.revisoesOcultas.push(nome);
+  save();render();
+  showToast('Revisão ocultada','info');
+}
+
+function restaurarRevisoes(){
+  if(!veiculo.revisoesOcultas||!veiculo.revisoesOcultas.length)return;
+  if(!confirm('Restaurar todas as revisões ocultas?'))return;
+  veiculo.revisoesOcultas=[];
+  save();render();
+  showToast('Revisões restauradas','success');
 }
 
 function renderVeiculo(){
@@ -1591,8 +1610,12 @@ function renderVeiculo(){
         <div class="prox-revisao-detail">Próxima: ${r.kmProx.toLocaleString('pt-BR')} km (faltam ${r.kmFalta.toLocaleString('pt-BR')} km)</div>
       </div>
       <div class="prox-revisao-status" style="color:${statusColor};background:${statusBg}">${statusText}</div>
+      <button onclick="ocultarRevisao('${r.nome}')" style="width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,0.05);color:var(--text-muted);font-size:10px;cursor:pointer;margin-left:4px;flex-shrink:0">✕</button>
     </div>`;
   }).join('');
+
+  const ocultasCount=(veiculo.revisoesOcultas||[]).length;
+  const restaurarHTML=ocultasCount?`<button onclick="restaurarRevisoes()" style="background:none;border:none;color:var(--blue);font-size:11px;font-family:var(--font);cursor:pointer;padding:4px 0">↩ Restaurar ${ocultasCount} oculta${ocultasCount>1?'s':''}</button>`:'';
 
   const manutsHTML=manuts.map(m=>{
     const total=m.servicos.reduce((s,sv)=>s+sv.valor,0);
@@ -1627,6 +1650,7 @@ function renderVeiculo(){
     </div>
     <div class="section-title">⚠️ Próximas Revisões</div>
     ${revisoesHTML}
+    ${restaurarHTML}
     <div style="display:flex;justify-content:space-between;align-items:center;margin:20px 0 12px">
       <div class="section-title" style="margin:0">🔧 Histórico</div>
       <button onclick="openManutencao()" style="padding:8px 16px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:13px;font-weight:700;font-family:var(--font);cursor:pointer">+ Nova</button>
