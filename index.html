@@ -1817,18 +1817,19 @@ function editOrcDiaDia(){
 
 function renderDiaDia(){
   const now=new Date();
-  const mesAtual=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const gastosMes=gastosDiarios.filter(g=>g.data&&g.data.startsWith(mesAtual));
+  const mesAtual=currentMonth.year+'-'+String(currentMonth.month+1).padStart(2,'0');
+  const isCurrentMonth=(currentMonth.year===now.getFullYear()&&currentMonth.month===now.getMonth());
+  const gastosMes=showAll?gastosDiarios:gastosDiarios.filter(g=>g.data&&g.data.startsWith(mesAtual));
   const totalMes=gastosMes.reduce((s,g)=>s+g.valor,0);
   const restante=Math.max(0,orcDiaDia-totalMes);
   const pctUsado=orcDiaDia>0?Math.min((totalMes/orcDiaDia)*100,100):0;
   const barColor=pctUsado>=90?'var(--red)':pctUsado>=70?'#fbbf24':'var(--green)';
 
   // Pace
-  const diaAtual=now.getDate();
-  const diasNoMes=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
-  const diasRestantes=diasNoMes-diaAtual;
-  const mediaDiaria=gastosMes.length>0?totalMes/diaAtual:0;
+  const diasNoMes=new Date(currentMonth.year,currentMonth.month+1,0).getDate();
+  const diaAtual=isCurrentMonth?now.getDate():diasNoMes;
+  const diasRestantes=isCurrentMonth?(diasNoMes-diaAtual):0;
+  const mediaDiaria=diaAtual>0?totalMes/diaAtual:0;
   const porDiaRestante=diasRestantes>0?restante/diasRestantes:restante;
 
   // Group by day
@@ -1852,28 +1853,35 @@ function renderDiaDia(){
     </div>`).join('')}`;
   }).join('');
 
+  const mesLabel=MESES[currentMonth.month]+' '+currentMonth.year;
+
+  const emptyDDText=showAll?'Nenhum gasto registrado':'Nenhum gasto registrado neste mês';
+
   document.getElementById('page-diadia').innerHTML=`
     <div class="dd-budget" onclick="editOrcDiaDia()">
-      <div class="dd-budget-label">Restante este mês</div>
+      <div class="dd-budget-label">Restante ${showAll?'':mesLabel}</div>
       <div class="dd-budget-remaining" style="color:${restante<=50?'var(--red)':restante<=100?'#fbbf24':'var(--green)'}">${fmt(restante)}</div>
       <div class="dd-budget-sub">${fmt(totalMes)} gasto de ${fmt(orcDiaDia)} • toque p/ editar</div>
       <div class="dd-budget-bar"><div class="dd-budget-fill" style="width:${pctUsado}%;background:${barColor}"></div></div>
-      <div class="dd-budget-info"><span>${pctUsado.toFixed(0)}% usado</span><span>${diasRestantes} dias restantes</span></div>
+      <div class="dd-budget-info"><span>${pctUsado.toFixed(0)}% usado</span><span>${isCurrentMonth?diasRestantes+' dias restantes':'Mês encerrado'}</span></div>
     </div>
 
-    <div class="dd-pace">
+    ${isCurrentMonth?`<div class="dd-pace">
       <div class="dd-pace-box"><div class="dd-pace-label">Média/dia</div><div class="dd-pace-val" style="color:#fbbf24">${fmt(mediaDiaria)}</div></div>
       <div class="dd-pace-box"><div class="dd-pace-label">Pode gastar/dia</div><div class="dd-pace-val" style="color:${porDiaRestante<mediaDiaria?'var(--red)':'var(--green)'}">${fmt(porDiaRestante)}</div></div>
-      <div class="dd-pace-box"><div class="dd-pace-label">Gastos do mês</div><div class="dd-pace-val" style="color:var(--blue)">${gastosMes.length}</div></div>
-    </div>
+      <div class="dd-pace-box"><div class="dd-pace-label">Gastos</div><div class="dd-pace-val" style="color:var(--blue)">${gastosMes.length}</div></div>
+    </div>`:`<div class="dd-pace">
+      <div class="dd-pace-box"><div class="dd-pace-label">Média/dia</div><div class="dd-pace-val" style="color:#fbbf24">${fmt(mediaDiaria)}</div></div>
+      <div class="dd-pace-box"><div class="dd-pace-label">Total gastos</div><div class="dd-pace-val" style="color:var(--blue)">${gastosMes.length}</div></div>
+    </div>`}
 
-    <div class="dd-quick-add">
+    ${isCurrentMonth||showAll?`<div class="dd-quick-add">
       <input id="dd-desc" class="dd-quick-input" type="text" placeholder="O que comprou?" onkeydown="if(event.key==='Enter')document.getElementById('dd-valor').focus()">
       <input id="dd-valor" class="dd-quick-valor" type="text" inputmode="decimal" placeholder="R$" oninput="maskCurrency(this)" onkeydown="if(event.key==='Enter')addGastoDiario()">
       <button class="dd-quick-btn" onclick="addGastoDiario()">+</button>
-    </div>
+    </div>`:''}
 
-    ${diasHTML||'<div class="empty"><div class="empty-icon">☕</div><div class="empty-text">Nenhum gasto registrado este mês</div></div>'}`;
+    ${diasHTML||`<div class="empty"><div class="empty-icon">☕</div><div class="empty-text">${emptyDDText}</div></div>`}`;
 }
 
 // ===== Cloud Sync =====
@@ -2084,7 +2092,7 @@ function switchTab(tab){
   else if(tab==='despesas')fab.classList.add('visible','expense-fab');
   // Hide global month picker on tabs that have their own navigation
   const mp=document.querySelector('.month-picker');
-  mp.style.display=(tab==='analise'||tab==='invest'||tab==='config'||tab==='veiculo'||tab==='diadia')?'none':'flex';
+  mp.style.display=(tab==='analise'||tab==='invest'||tab==='config'||tab==='veiculo')?'none':'flex';
   render();
 }
 
