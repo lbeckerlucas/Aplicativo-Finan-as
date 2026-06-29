@@ -3073,7 +3073,7 @@ function render(){
     </div>`:'';
     return`<div class="invest-item">
       <div class="invest-item-top">
-        <div class="invest-item-info"><div class="invest-item-name">${inv.nome}${inv.pctCDI?' <span style="font-size:10px;color:var(--green);font-weight:600">${inv.pctCDI}% CDI</span>':''}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
+        <div class="invest-item-info"><div class="invest-item-name">${inv.nome}${inv.pctCDI?` <span style="font-size:10px;color:var(--green);font-weight:600">${inv.pctCDI}% CDI</span>`:''}</div><div class="invest-item-date">Atualizado: ${fmtDate(inv.atualizado)}</div></div>
         <div class="invest-item-value">${fmt(inv.valor)}</div>
         <div class="invest-item-actions"><button class="invest-item-btn edit" onclick="openGuardado('${inv.id}')">✎</button><button class="invest-item-btn del" onclick="deleteInvest('${inv.id}')">✕</button></div>
       </div>
