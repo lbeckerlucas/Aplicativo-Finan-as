@@ -41,10 +41,10 @@
   .bottom-nav { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:linear-gradient(to top,var(--bg) 70%,transparent); padding:8px 12px 28px; display:flex; justify-content:space-around; z-index:40; }
   .tab-btn { background:transparent; border:none; border-radius:14px; padding:8px 10px 4px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; transition:all 0.2s; min-width:0; flex:1; }
   .tab-btn.active { background:rgba(255,255,255,0.06); }
-  .tab-icon { font-size:20px; color:var(--text-muted); transition:color 0.2s; }
-  .tab-label { font-size:0; width:4px; height:4px; border-radius:50%; background:transparent; transition:all 0.2s; overflow:hidden; padding:0; }
+  .tab-icon { font-size:18px; color:var(--text-muted); transition:color 0.2s; }
+  .tab-label { font-size:9px; color:var(--text-muted); font-weight:600; transition:color 0.2s; }
   .tab-btn.active .tab-icon { color:var(--text); }
-  .tab-btn.active .tab-label { background:var(--green); }
+  .tab-btn.active .tab-label { color:var(--green); }
 
   .page { display:none; padding:0 20px 120px; }
   .page.active { display:block; animation:fadeUp 0.3s ease; }
